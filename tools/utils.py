@@ -16,3 +16,8 @@ def histogram_equalization_simple(ims, extra=1):
     ims_corrected = extra*(ims-bot).astype(float)*255/(top-bot)
 
     return ims_corrected.astype("uint8")
+
+def polygon_area(pts):
+    x = pts[:, 0]
+    y = pts[:, 1]
+    return 0.5 * np.abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
