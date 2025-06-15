@@ -32,7 +32,7 @@ K = np.array([[423.22164917,   0.        , 431.39187622],
 K_inv = np.linalg.inv(K)
 
 playback_x = 100
-frame_num_min = 850#2150
+frame_num_min = 900#2150
 frame_num_max = 999#931#2200
 
 EQUALIZE_IMAGES = True
@@ -60,14 +60,22 @@ all_frames_ir_depth = np.roll(all_frames_ir_depth, -zeroth_idx, axis=0)
 ## -- Initialize currently_tracking variables
 dart_uv = np.array([0, 0, 1])[:, np.newaxis]
 
+##########################################################
 # --- GLFW INIT ---
 if not glfw.init():
     raise RuntimeError("Failed to initialize GLFW")
 
-side_by_side_frames = 4
-window_width = W * side_by_side_frames
-window_height = H
+# I want them one on top of each other now
+#side_by_side_frames = 4
+#window_width = W * side_by_side_frames
+#window_height = H
+#window = glfw.create_window(window_width, window_height, "RealSense IR + Depth Viewer", None, None)
+
+vertically_stacked_frames = 4
+window_width = W
+window_height = H * vertically_stacked_frames
 window = glfw.create_window(window_width, window_height, "RealSense IR + Depth Viewer", None, None)
+
 if not window:
     glfw.terminate()
     raise RuntimeError("Failed to create window")
@@ -80,7 +88,7 @@ tex_ir_left = openGL_utils.create_texture()
 tex_ir_right = openGL_utils.create_texture()
 tex_depth = openGL_utils.create_texture()
 tex_fgmask = openGL_utils.create_texture()
-
+##################################################################
 
 
 frame_count = 0
@@ -128,7 +136,8 @@ plotter = fast_plotter.FastPlotter(plot_names=plot_names,
                       data_shapes=data_shapes,
                       window_name="plotting_simulation",
                       xlims=xlims, ylims=ylims,
-                      nrows=1, ncols=4, figsize=(18, 3), dpi=200, mode=fast_plotter.MODE_PLOT)
+                      nrows=1, ncols=4, figsize=(12, 2), dpi=100, mode=fast_plotter.MODE_PLOT,
+                      desired_window_width = None)
 
 # --- Other variables
 erosion_mask_depth_contour = np.ones((5,5))
@@ -275,10 +284,16 @@ try:
 
         # Draw all 3 images side-by-side
         glClear(GL_COLOR_BUFFER_BIT)
-        openGL_utils.draw_textured_quad(0, side_by_side_frames, tex_ir_left)
-        openGL_utils.draw_textured_quad(1, side_by_side_frames, tex_ir_right)
-        openGL_utils.draw_textured_quad(2, side_by_side_frames, tex_depth)
-        openGL_utils.draw_textured_quad(3, side_by_side_frames, tex_fgmask)
+        #horizontal drawing
+        #openGL_utils.draw_textured_quad(0, side_by_side_frames, tex_ir_left)
+        #openGL_utils.draw_textured_quad(1, side_by_side_frames, tex_ir_right)
+        #openGL_utils.draw_textured_quad(2, side_by_side_frames, tex_depth)
+        #openGL_utils.draw_textured_quad(3, side_by_side_frames, tex_fgmask)
+
+        openGL_utils.draw_textured_quad(0, vertically_stacked_frames, tex_ir_left, layout="vertical")
+        openGL_utils.draw_textured_quad(1, vertically_stacked_frames, tex_ir_right, layout="vertical")
+        openGL_utils.draw_textured_quad(2, vertically_stacked_frames, tex_depth, layout="vertical")
+        openGL_utils.draw_textured_quad(3, vertically_stacked_frames, tex_fgmask, layout="vertical")
 
         glfw.swap_buffers(window)
         glfw.poll_events()
@@ -330,10 +345,10 @@ try:
             tx = np.vstack((kalman_filterer.times[:kalman_filterer.k + 1], kalman_filterer.p_est[:kalman_filterer.k + 1, 0]))
 
             state = np.hstack((kalman_filterer.p_est[kalman_filterer.k], kalman_filterer.v_est[kalman_filterer.k]))
-            figure_text = (f"last_measurement: pos: {np.round(y_k[:3], 2)}, vel:{np.round(y_k[3:], 2)}\t"
-                           f"last_state      : pos: {np.round(state[:3], 2)}, vel:{np.round(state[3:], 2)}\t"
+            figure_text1 = (f"last_measurement: pos: {np.round(y_k[:3], 2)}, vel:{np.round(y_k[3:], 2)}    "                           
                            f"currently_tracking:{currently_tracking}")
-            plot_img = plotter.update_plot([xy, xz, yz, tx], figure_text)  # [xt, yt, zt, xy, xz, yz]
+            figure_test2 = f"last_state      : pos: {np.round(state[:3], 2)}, vel:{np.round(state[3:], 2)}    "
+            plot_img = plotter.update_plot([xy, xz, yz, tx], figure_text1, figure_test2)  # [xt, yt, zt, xy, xz, yz]
             print(f"plot updated up to index: {kalman_filterer.k}")
             print(f"x positions")
             print(f"{kalman_filterer.p_est[:kalman_filterer.k + 1, 0]}")

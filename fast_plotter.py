@@ -6,12 +6,14 @@ MODE_IMSHOW = 0
 MODE_PLOT = 1     #for some reason, it's plotting on a matplotlib windows as well, together with opencv.
 MODE_SCATTER = 2
 class FastPlotter:
-    def __init__(self, plot_names, data_shapes, window_name, xlims, ylims, nrows=2, ncols=4, figsize=(10,5), dpi=200, mode=MODE_IMSHOW):
+    def __init__(self, plot_names, data_shapes, window_name, xlims, ylims, nrows=2, ncols=4, figsize=(10,5), dpi=200,
+                 mode=MODE_IMSHOW, desired_window_width=None):
         self.fig, self.axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, dpi=dpi)
         self.pl_list = []
         self.window_name = window_name
         self.prev_txt = None
         self.mode = mode
+        self.desired_window_width = desired_window_width
 
         if type(self.axs) == type([]):
             for ax_row, title_row in zip(self.axs, plot_names, xlims, ylims):
@@ -45,7 +47,7 @@ class FastPlotter:
         cv2.imshow(self.window_name, plot)
         cv2.waitKey(1)
 
-    def update_plot(self, data, figure_text):
+    def update_plot(self, data, figure_text1, figure_text2):
         pct_big = 0.2
         pct_small = 0.1 #to check increase the xlim and ylim of the axes. Big and small to include hysteresis
 
@@ -97,16 +99,25 @@ class FastPlotter:
 
         buf = self.fig.canvas.buffer_rgba()
         plot = np.asarray(buf)
+        plot = np.vstack((np.ones_like(plot[:100,:,:], dtype="uint8")*255, plot))
+        if self.desired_window_width is not None:
+            print(f"resizing: ")
+            H_now, W_now = plot.shape
+            new_H, new_W = H_now * self.desired_window_width / W_now, self.desired_window_width
+            print(f"from {H_now, W_now} to {new_H, new_W}")
+            plot = cv2.resize(plot, (new_H, new_W))
         if self.prev_txt is not None:
             cv2.putText(plot, self.prev_txt, (0, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                        1, (255, 255, 255), 3, cv2.LINE_AA)
+                        0.5, (255, 255, 255), 2, cv2.LINE_AA)
 
-        cv2.putText(plot, figure_text, (0, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                    1, (0, 255, 0), 2, cv2.LINE_AA)
+        cv2.putText(plot, figure_text1, (0, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (0, 255, 0), 1, cv2.LINE_AA)
+        cv2.putText(plot, figure_text2, (0, 60), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (0, 255, 0), 1, cv2.LINE_AA)
         plot = cv2.cvtColor(plot, cv2.COLOR_RGB2BGR)
         cv2.imshow(self.window_name, plot)
         cv2.waitKey(1)
         #cv2.waitKey(int(0.02 * 1000))
-        self.prev_txt = figure_text
+        self.prev_txt = figure_text1
         return plot
 
